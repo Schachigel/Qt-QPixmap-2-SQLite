@@ -18,11 +18,13 @@ MainWindow::~MainWindow() { delete ui; }
 namespace {
     void reportError(const QString &s) {
         qDebug() << s;
+        QSqlDatabase::removeDatabase (QSqlDatabase::defaultConnection);
         QSqlDatabase::database().close();
     }
     void reportSqlError(const QString &s, const QSqlError &e) {
         qDebug() << s;
         qDebug() << e;
+        QSqlDatabase::removeDatabase (QSqlDatabase::defaultConnection);
         QSqlDatabase::database().close();
     }
 }
@@ -32,7 +34,6 @@ void MainWindow::pictureFromSqLiteDb(bool inMemory){
     QFile("../sqlPixmap/db.sqlite").remove();
     QFile("../sqlPixmap/vacuum.sqlite").remove();
     ui->lbl->clear();
-    // load pic
     QPixmap pixmap("../sqlPixmap/image.jpg");
     if (pixmap.width() == 0 || pixmap.height() == 0) return reportError("Pixmap not loaded");
     // pic was loaded from file successfully
@@ -53,6 +54,7 @@ void MainWindow::pictureFromSqLiteDb(bool inMemory){
     QSqlQuery v("SELECT sqlite_version()");
     Q_ASSERT(v.next());
     qDebug() << "sqlite version " << v.value(0).toString();
+
     QSqlQuery q;
     if ( ! q.prepare("CREATE TABLE t (c)")) return reportSqlError("prep table creation failed", q.lastError());
     if ( ! q.exec()) return reportSqlError("failed to create table", q.lastError());
@@ -77,14 +79,13 @@ void MainWindow::pictureFromSqLiteDb(bool inMemory){
     if ( ! q.next()) return reportSqlError("failed to next to record", q.lastError());
     QByteArray readBa = q.value(0).toByteArray();
     // picture was retrieved from db
-
     if (0 >= readBa.size()) return reportError("returned data is empty");
+
     QPixmap readPic;
     if ( ! readPic.loadFromData(readBa, "JPG")) return reportError("could not load pic from data");
     if (readPic.width() == 0 || readPic.height() == 0) return reportError("read pic has no size");
     ui->lbl->setPixmap(readPic);
     ui->lbl->setScaledContents(true);
-
     }
     QSqlDatabase::removeDatabase (QSqlDatabase::defaultConnection);
     QSqlDatabase().database().close();
